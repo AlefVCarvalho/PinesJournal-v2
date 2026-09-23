@@ -1,0 +1,23 @@
+# Ambiente local
+.venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+.vscode/
+.idea/
+coverage/
+
+# Cloudflare / configuracoes locais
+.wrangler/
+wrangler.toml
+.dev.vars
+.access-ready
+
+# Dados e artefatos privados
+backups/
+imports/
+*.sqlite
+*.sqlite3
+*.db
+import-v2*.sql
+vapid-secrets*.json

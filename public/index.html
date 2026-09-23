@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#6b1733">
+  <meta name="description" content="Pine's Journal - tarefas, calendário e organização pessoal.">
+  <title>Pine's Journal</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegação principal">
+      <div class="brand">
+        <img src="/assets/header_mark.png" alt="" class="brand-mark">
+        <div>
+          <strong>Pine's Journal</strong>
+        </div>
+      </div>
+      <nav class="nav-list">
+        <button class="nav-item active" data-view="tasks"><img src="/assets/lista.svg" alt="">Tarefas</button>
+        <button class="nav-item" data-view="calendar"><img src="/assets/calendario.svg" alt="">Calendário</button>
+        <button class="nav-item" data-view="scratch"><img src="/assets/bloco.svg" alt="">Bloco</button>
+        <button class="nav-item" data-view="settings"><img src="/assets/configuracoes.svg" alt="">Configurações</button>
+      </nav>
+      <div class="sidebar-status"><span class="status-dot" id="apiStatusDot"></span><span id="apiStatus">conectando...</span></div>
+    </aside>
+
+    <main class="main-content">
+      <header class="mobile-header">
+        <div class="brand compact"><img src="/assets/header_mark.png" alt="" class="brand-mark"><strong>Pine's Journal</strong></div>
+        <button class="icon-button" id="installButton" hidden title="Instalar aplicativo">＋</button>
+      </header>
+
+      <section class="view active" id="view-tasks">
+        <div class="page-header">
+          <div><p class="eyebrow">Organização pessoal</p><h1>Minhas tarefas</h1></div>
+          <div class="header-actions"><button class="button secondary" id="addTagButton">+ Tag</button><button class="button primary" id="addTaskButton">+ Tarefa</button></div>
+        </div>
+
+        <div class="toolbar">
+          <label class="search-field"><span>⌕</span><input id="searchInput" type="search" placeholder="Buscar tarefa, descrição, data ou tag" autocomplete="off"></label>
+          <button class="button secondary" id="filterButton">Filtros</button>
+          <select class="select-control" id="sortSelect" aria-label="Ordenar tarefas">
+            <option value="default">Ordenar: padrão</option>
+            <option value="due-asc">Prazo mais próximo</option>
+            <option value="due-desc">Prazo mais distante</option>
+            <option value="created-desc">Criadas recentemente</option>
+            <option value="created-asc">Criadas primeiro</option>
+            <option value="title-asc">Título A-Z</option>
+            <option value="title-desc">Título Z-A</option>
+          </select>
+        </div>
+
+        <div class="alert overdue-alert" id="overdueBanner" hidden></div>
+        <div id="activeFilters" class="active-filters" hidden></div>
+        <div id="taskList" class="task-list" aria-live="polite"></div>
+      </section>
+
+      <section class="view" id="view-calendar">
+        <div class="page-header">
+          <div><p class="eyebrow">Visão mensal</p><h1>Calendário</h1></div>
+          <div class="calendar-controls"><button class="icon-button" id="calendarPrev" aria-label="Mês anterior">‹</button><strong id="calendarTitle"></strong><button class="icon-button" id="calendarNext" aria-label="Próximo mês">›</button></div>
+        </div>
+        <div class="calendar-layout">
+          <div class="calendar-card"><div class="calendar-weekdays"><span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span></div><div class="calendar-grid" id="calendarGrid"></div></div>
+          <aside class="day-panel"><h2 id="selectedDayTitle">Selecione um dia</h2><div id="selectedDayTasks" class="compact-task-list"><p class="muted">As tarefas com prazo aparecerão aqui.</p></div></aside>
+        </div>
+      </section>
+
+      <section class="view" id="view-scratch">
+        <div class="page-header"><div><p class="eyebrow">Anotações</p><h1>Bloco</h1></div><div class="header-actions"><button class="button secondary" id="clearScratchButton">Limpar</button><button class="button primary" id="downloadScratchButton">Salvar PNG</button></div></div>
+        <div class="scratch-card">
+          <div class="scratch-toolbar">
+            <button class="tool-button active" data-tool="draw">Lápis</button>
+            <button class="tool-button" data-tool="erase">Borracha</button>
+            <button class="tool-button" data-tool="text">Texto</button>
+            <label><span id="scratchSizeLabel">Espessura</span> <input type="range" id="scratchSize" min="2" max="28" value="4"></label>
+            <input type="color" id="scratchColor" value="#6b1733" aria-label="Cor do lápis ou texto">
+          </div>
+          <div class="scratch-canvas-wrap"><canvas id="scratchCanvas"></canvas></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-settings">
+        <div class="page-header"><div><p class="eyebrow">Preferências</p><h1>Configurações</h1></div></div>
+        <div class="settings-grid">
+          <article class="settings-card"><h2>Tema</h2><div class="theme-options" id="themeOptions"></div></article>
+          <article class="settings-card"><h2>Instalação</h2><button class="button secondary" id="settingsInstallButton">Instalar Pine's Journal</button></article>
+          <article class="settings-card notification-card">
+            <div class="settings-card-heading">
+              <h2>Notificações</h2>
+              <span class="settings-status" id="notificationStateBadge">Verificando</span>
+            </div>
+            <div class="notification-settings">
+              <label class="notification-time-field">Horário diário
+                <input type="time" id="notificationTime" value="09:00" step="60">
+              </label>
+              <p class="notification-summary" id="notificationStatusText">Verificando suporte deste dispositivo...</p>
+              <div class="notification-actions">
+                <button class="button primary" id="enableNotificationsButton" type="button">Ativar</button>
+                <button class="button secondary" id="testNotificationButton" type="button" hidden>Testar</button>
+                <button class="button secondary" id="disableNotificationsButton" type="button" hidden>Desativar</button>
+              </div>
+              <div class="notification-badge-row">
+                <span>Badge de tarefas</span>
+                <strong id="badgeSupportText">Verificando</strong>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <nav class="mobile-nav" aria-label="Navegação mobile">
+      <button class="nav-item active" data-view="tasks"><img src="/assets/lista.svg" alt=""><span>Tarefas</span></button>
+      <button class="nav-item" data-view="calendar"><img src="/assets/calendario.svg" alt=""><span>Calendário</span></button>
+      <button class="nav-item" data-view="scratch"><img src="/assets/bloco.svg" alt=""><span>Bloco</span></button>
+      <button class="nav-item" data-view="settings"><img src="/assets/configuracoes.svg" alt=""><span>Ajustes</span></button>
+    </nav>
+  </div>
+
+  <dialog id="taskDialog" class="modal">
+    <form method="dialog" id="taskForm">
+      <div class="modal-header"><div><p class="eyebrow">Tarefa</p><h2 id="taskDialogTitle">Nova tarefa</h2></div><button type="button" class="icon-button dialog-close" aria-label="Fechar">×</button></div>
+      <input type="hidden" id="taskId">
+      <label class="field">Título<input id="taskTitle" maxlength="180" required></label>
+      <label class="field">Descrição<textarea id="taskDescription" rows="4" maxlength="5000"></textarea></label>
+      <label class="field">Prazo<input id="taskDueDate" type="date"></label>
+      <fieldset class="tag-picker"><legend>Tags</legend><div id="taskTagChoices"></div></fieldset>
+      <div class="modal-actions"><button type="button" class="button danger" id="deleteTaskButton" hidden>Excluir</button><span></span><button type="button" class="button secondary dialog-close">Cancelar</button><button type="submit" class="button primary" value="default">Salvar</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="filterDialog" class="modal compact-modal">
+    <form method="dialog" id="filterForm">
+      <div class="modal-header"><div><p class="eyebrow">Lista</p><h2>Filtros</h2></div><button type="button" class="icon-button dialog-close" aria-label="Fechar">×</button></div>
+      <fieldset><legend>Status</legend><div class="radio-grid" id="statusChoices"></div></fieldset>
+      <fieldset><legend>Tags</legend><label class="check-row"><input type="checkbox" id="withoutTagsFilter"> Sem tag</label><div id="filterTagChoices" class="tag-check-list"></div></fieldset>
+      <div class="modal-actions"><button type="button" class="button secondary" id="clearFiltersButton">Limpar</button><span></span><button class="button primary" id="applyFiltersButton" value="default">Aplicar filtros</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="tagDialog" class="modal compact-modal">
+    <form method="dialog" id="tagForm">
+      <div class="modal-header"><div><p class="eyebrow">Organização</p><h2>Tags</h2></div><button type="button" class="icon-button dialog-close" aria-label="Fechar">×</button></div>
+      <div class="inline-form"><input id="newTagName" placeholder="Nome da tag" maxlength="60" required><input id="newTagColor" type="color" value="#8d2141" aria-label="Cor"><button class="button primary" type="submit">Criar</button></div>
+      <div id="tagManagerList" class="tag-manager-list"></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
