@@ -6,6 +6,11 @@ A aplicação utiliza **HTML, CSS e JavaScript nativos no frontend** e uma **API
 
 O objetivo do projeto é manter uma base simples e organizada, separando claramente interface, regras da API, persistência de dados e notificações, sem depender de frameworks JavaScript no frontend.
 
+### Video demonstrativo do sistema
+
+https://github.com/user-attachments/assets/958d94f6-756b-470b-8e04-512b6378d430
+
+
 ## Funcionamento e arquitetura
 
 O frontend é servido como conteúdo estático pelo Cloudflare. Requisições para `/api/*` são encaminhadas ao Worker Python, que executa a aplicação FastAPI e acessa o banco D1.
