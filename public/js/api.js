@@ -1,13 +1,36 @@
+let reauthenticationStarted = false;
+
+function reauthenticate() {
+  if (reauthenticationStarted) return;
+  reauthenticationStarted = true;
+
+  // O Service Worker usa network-first para navegacoes, entao o reload volta a
+  // passar pelo Cloudflare Access em vez de reutilizar apenas o shell em cache.
+  window.location.reload();
+}
+
 async function request(path, options = {}) {
+  const { headers: optionHeaders = {}, ...rest } = options;
   const config = {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    ...options,
+    credentials: "same-origin",
+    ...rest,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+      ...optionHeaders,
+    },
   };
 
   const response = await fetch(path, config);
 
-  // Se a sessão do Cloudflare Access expirar com a PWA aberta, o fetch pode
-  // terminar na página de autenticação. Nesse caso, leve o navegador até ela.
+  // Cloudflare Access recomenda este fluxo para SPAs/AJAX: com
+  // X-Requested-With, uma sessao expirada pode ser devolvida como 401.
+  if (response.status === 401) {
+    reauthenticate();
+    throw new Error("Sessão expirada. Reautenticando...");
+  }
+
+  // Fallback para configuracoes em que o Access ainda devolve redirecionamento.
   if (response.redirected && response.url && !response.url.startsWith(window.location.origin)) {
     window.location.assign(response.url);
     throw new Error("Sessão expirada. Redirecionando para autenticação...");

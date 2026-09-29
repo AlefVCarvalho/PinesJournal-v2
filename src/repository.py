@@ -225,6 +225,42 @@ async def database_health(db) -> bool:
     return bool(result and int(result.get("ok", 0)) == 1)
 
 
+async def notification_schema_status(db) -> dict:
+    """Confere se as tabelas da migration de notificacoes existem no D1."""
+    table_rows = await rows(
+        db,
+        """
+        SELECT name
+        FROM sqlite_master
+        WHERE type = 'table' AND name IN ('push_subscriptions', 'notification_deliveries')
+        """,
+    )
+    tables = {row["name"] for row in table_rows}
+    missing = sorted({"push_subscriptions", "notification_deliveries"} - tables)
+    ready = not missing
+
+    subscriptions = None
+    deliveries = None
+    if ready:
+        counts = await first(
+            db,
+            """
+            SELECT
+                (SELECT COUNT(*) FROM push_subscriptions) AS subscriptions,
+                (SELECT COUNT(*) FROM notification_deliveries) AS deliveries
+            """,
+        ) or {}
+        subscriptions = int(counts.get("subscriptions") or 0)
+        deliveries = int(counts.get("deliveries") or 0)
+
+    return {
+        "ready": ready,
+        "missing_tables": missing,
+        "subscriptions": subscriptions,
+        "deliveries": deliveries,
+    }
+
+
 async def database_stats(db) -> dict:
     result = await first(
         db,
@@ -234,18 +270,20 @@ async def database_stats(db) -> dict:
             (SELECT COUNT(*) FROM tasks WHERE completed = 0) AS pending_tasks,
             (SELECT COUNT(*) FROM tasks WHERE completed = 1) AS completed_tasks,
             (SELECT COUNT(*) FROM tags) AS tags,
-            (SELECT COUNT(*) FROM task_tags) AS task_tag_links,
-            (SELECT COUNT(*) FROM push_subscriptions) AS push_subscriptions
+            (SELECT COUNT(*) FROM task_tags) AS task_tag_links
         """,
-    )
-    return result or {
+    ) or {
         "tasks": 0,
         "pending_tasks": 0,
         "completed_tasks": 0,
         "tags": 0,
         "task_tag_links": 0,
-        "push_subscriptions": 0,
     }
+
+    notification_schema = await notification_schema_status(db)
+    result["push_subscriptions"] = notification_schema["subscriptions"]
+    result["notifications_schema_ready"] = notification_schema["ready"]
+    return result
 
 
 async def upsert_push_subscription(db, payload, user_agent: str = ""):

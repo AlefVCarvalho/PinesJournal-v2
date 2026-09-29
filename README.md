@@ -48,6 +48,7 @@ PinesJournal/
 │
 ├── src/
 │   ├── main.py
+│   ├── http_app.py
 │   ├── models.py
 │   ├── repository.py
 │   ├── notification_service.py
@@ -108,7 +109,8 @@ PinesJournal/
 
 | Arquivo | Função |
 | --- | --- |
-| `src/main.py` | Ponto principal do backend. Cria a aplicação FastAPI, registra as rotas da API, adiciona cabeçalhos de segurança e conecta o FastAPI ao ambiente do Cloudflare Worker. |
+| `src/main.py` | Entrypoint leve do Cloudflare Worker. Encaminha requisições HTTP para a aplicação FastAPI e executa o Cron sem carregar FastAPI/Pydantic no caminho agendado. |
+| `src/http_app.py` | Define a aplicação FastAPI, endpoints HTTP e os cabeçalhos de segurança. |
 | `src/models.py` | Define e valida os payloads recebidos pela API, incluindo tarefas, tags, conclusão de tarefas, inscrições Push e preferências de notificação. |
 | `src/repository.py` | Centraliza o acesso ao Cloudflare D1. Contém consultas e operações de criação, leitura, atualização e exclusão de tarefas, tags e inscrições de notificação. Também gera informações usadas nos resumos de tarefas. |
 | `src/notification_service.py` | Contém as regras das notificações. Monta mensagens, considera o horário configurado por dispositivo, envia testes e executa a rotina agendada de lembretes. |
@@ -205,7 +207,33 @@ O arquivo `wrangler.toml` real é ignorado pelo Git para evitar a publicação a
 uv run pywrangler d1 migrations apply pinesjournal --local
 ```
 
-### 4. Iniciar o ambiente de desenvolvimento
+### 4. Conferir e aplicar as migrations no D1 de produção
+
+Antes de fazer o deploy, confira o banco remoto. Isso é obrigatório quando uma nova
+migration é adicionada; o deploy do Worker não aplica migrations automaticamente.
+
+Com o `pywrangler` usado neste projeto:
+
+```bash
+uv run pywrangler d1 migrations list pinesjournal --remote
+uv run pywrangler d1 migrations apply pinesjournal --remote
+```
+
+No Pine's Journal, a migration `0002_notifications.sql` cria `push_subscriptions` e
+`notification_deliveries`. Se ela não existir no D1 remoto, o Cron de notificações
+falhará em todas as execuções mesmo que tarefas e tags continuem funcionando.
+
+Depois do deploy, com o app autenticado pelo Cloudflare Access, abra:
+
+```text
+/api/notifications/diagnostics
+```
+
+O campo `ready` deve ser `true`, `vapid_configured` deve ser `true` e
+`missing_tables` deve estar vazio. O endpoint não expõe chaves VAPID nem endpoints
+de Push.
+
+### 5. Iniciar o ambiente de desenvolvimento
 
 ```bash
 uv run pywrangler dev
@@ -216,6 +244,17 @@ Por padrão, o ambiente local costuma ficar disponível em:
 ```text
 http://localhost:8787
 ```
+
+## Deploy de produção
+
+Ao publicar uma versão que inclua novas migrations, aplique primeiro as migrations
+remotas e só depois faça o deploy do Worker:
+
+```bash
+uv run pywrangler deploy
+``` Em caso de falha no Cron, também é
+possível consultar os eventos recentes em **Workers & Pages > seu Worker > Settings >
+Trigger Events > View events**.
 
 ## Configuração das notificações Web Push
 

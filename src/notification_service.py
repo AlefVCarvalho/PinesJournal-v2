@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 import repository
-import webpush
 
 
 DELIVERY_KIND = "daily-due-summary"
@@ -73,6 +72,8 @@ async def send_test(env, db, endpoint: str) -> dict:
         raise LookupError("Inscrição de notificações não encontrada neste dispositivo.")
 
     summary = await repository.notification_task_summary(db, datetime.now(timezone.utc).date().isoformat())
+    import webpush
+
     status = await webpush.send(env, subscription, build_test_payload(summary["pending_count"]), ttl=300)
     if status in (404, 410):
         await repository.delete_push_subscription(db, endpoint)
@@ -81,7 +82,12 @@ async def send_test(env, db, endpoint: str) -> dict:
 
 async def run_scheduled(env, scheduled_time_ms: int | float | None = None) -> dict:
     db = env.DB
-    if not webpush.configured(env):
+    configured = bool(
+        getattr(env, "VAPID_PUBLIC_KEY", None)
+        and getattr(env, "VAPID_PRIVATE_KEY", None)
+        and getattr(env, "VAPID_SUBJECT", None)
+    )
+    if not configured:
         return {"configured": False, "checked": 0, "sent": 0, "removed": 0}
 
     subscriptions = await repository.list_enabled_push_subscriptions(db)
@@ -109,6 +115,10 @@ async def run_scheduled(env, scheduled_time_ms: int | float | None = None) -> di
             continue
 
         try:
+            # Web Push e seus modulos de criptografia sao carregados apenas quando
+            # existe de fato uma notificacao a enviar. Isso reduz CPU no Cron ocioso.
+            import webpush
+
             status = await webpush.send(env, subscription, build_daily_payload(summary, local_date))
         except Exception as exc:
             print(f"Falha ao preparar Web Push para {subscription['id']}: {type(exc).__name__}: {exc}")

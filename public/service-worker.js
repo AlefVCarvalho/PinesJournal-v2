@@ -1,6 +1,5 @@
-const CACHE_NAME = "pinesjournal-shell-20260922-notifications";
+const CACHE_NAME = "pinesjournal-shell-20260929-access-fix";
 const APP_SHELL = [
-  "/",
   "/index.html",
   "/styles.css",
   "/js/api.js",
@@ -37,6 +36,17 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/")) return;
   if (event.request.method !== "GET") return;
 
+  // Navegacoes sempre consultam a rede primeiro. Assim, uma sessao expirada
+  // volta a passar pelo Cloudflare Access. Se o dispositivo estiver offline,
+  // o shell previamente armazenado continua disponivel.
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request, { cache: "no-store" }).catch(() => caches.match("/index.html"))
+    );
+    return;
+  }
+
+  // Arquivos estaticos continuam cache-first para manter a PWA rapida/offline.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
