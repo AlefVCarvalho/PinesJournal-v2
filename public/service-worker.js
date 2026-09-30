@@ -1,4 +1,4 @@
-const CACHE_NAME = "pinesjournal-shell-20260929-access-fix";
+const CACHE_NAME = "pinesjournal-shell-20260930-access-reauth";
 const APP_SHELL = [
   "/index.html",
   "/styles.css",

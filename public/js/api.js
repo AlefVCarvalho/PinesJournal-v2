@@ -1,12 +1,29 @@
 let reauthenticationStarted = false;
 
+export class AuthenticationRequiredError extends Error {
+  constructor(message = "Sessão do Cloudflare Access expirada.") {
+    super(message);
+    this.name = "AuthenticationRequiredError";
+  }
+}
+
+export function isAuthenticationRequired(error) {
+  return error?.name === "AuthenticationRequiredError";
+}
+
 function reauthenticate() {
   if (reauthenticationStarted) return;
   reauthenticationStarted = true;
 
-  // O Service Worker usa network-first para navegacoes, entao o reload volta a
-  // passar pelo Cloudflare Access em vez de reutilizar apenas o shell em cache.
-  window.location.reload();
+  // /api/* nunca e servido pelo cache da PWA. Uma navegacao completa para esta
+  // rota passa obrigatoriamente pelo Cloudflare Access. Se a sessao expirou, o
+  // Access mostra o login; depois o endpoint redireciona de volta para o app.
+  window.location.replace("/api/auth");
+}
+
+function authenticationRequired(message) {
+  reauthenticate();
+  return new AuthenticationRequiredError(message);
 }
 
 async function request(path, options = {}) {
@@ -21,27 +38,38 @@ async function request(path, options = {}) {
     },
   };
 
-  const response = await fetch(path, config);
-
-  // Cloudflare Access recomenda este fluxo para SPAs/AJAX: com
-  // X-Requested-With, uma sessao expirada pode ser devolvida como 401.
-  if (response.status === 401) {
-    reauthenticate();
-    throw new Error("Sessão expirada. Reautenticando...");
+  let response;
+  try {
+    response = await fetch(path, config);
+  } catch (error) {
+    // Quando o Access redireciona uma requisicao AJAX para a tela de login,
+    // alguns navegadores expõem isso apenas como TypeError/Failed to fetch.
+    // Se o dispositivo esta online, force uma navegacao real para o Access.
+    if (error instanceof TypeError && navigator.onLine) {
+      throw authenticationRequired("Sessão expirada. Reconectando ao Cloudflare Access...");
+    }
+    throw error;
   }
 
-  // Fallback para configuracoes em que o Access ainda devolve redirecionamento.
+  if (response.status === 401 || response.status === 403 || response.type === "opaqueredirect") {
+    throw authenticationRequired("Sessão expirada. Reconectando ao Cloudflare Access...");
+  }
+
   if (response.redirected && response.url && !response.url.startsWith(window.location.origin)) {
-    window.location.assign(response.url);
-    throw new Error("Sessão expirada. Redirecionando para autenticação...");
+    throw authenticationRequired("Sessão expirada. Reconectando ao Cloudflare Access...");
   }
 
   if (response.status === 204) return null;
 
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("application/json")) {
+    // Uma pagina HTML inesperada em uma chamada da API normalmente e a pagina
+    // intermediaria do Access. Nao apresente isso como "sem conexao".
+    if (navigator.onLine) {
+      throw authenticationRequired("Sessão expirada. Reconectando ao Cloudflare Access...");
+    }
     if (!response.ok) throw new Error(`Erro ${response.status}`);
-    throw new Error("A API retornou uma resposta inesperada. Recarregue a aplicação.");
+    throw new Error("A API retornou uma resposta inesperada.");
   }
 
   const data = await response.json();

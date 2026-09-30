@@ -1,4 +1,4 @@
-import { api } from "./api.js";
+import { api, isAuthenticationRequired } from "./api.js";
 
 const THEMES = {
   Vinho: { accent: "#8d2141", header: "#6b1733" },
@@ -155,6 +155,10 @@ async function loadData({ quiet = false } = {}) {
     renderAll();
     void updateAppBadge();
   } catch (error) {
+    if (isAuthenticationRequired(error)) {
+      setApiStatus(false, "reconectando...");
+      return;
+    }
     setApiStatus(false);
     renderTasks();
     if (!quiet) toast(`Não foi possível carregar os dados: ${error.message}`, "error");
@@ -1027,7 +1031,11 @@ async function boot() {
   try {
     await api.health();
     setApiStatus(true);
-  } catch {
+  } catch (error) {
+    if (isAuthenticationRequired(error)) {
+      setApiStatus(false, "reconectando...");
+      return;
+    }
     setApiStatus(false);
   }
   await loadData();

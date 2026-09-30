@@ -5,7 +5,7 @@ Pydantic quando apenas a rotina de notificacoes for executada.
 """
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from models import (
     CompletionPayload,
@@ -18,7 +18,7 @@ from models import (
 import repository
 
 
-APP_VERSION = "3.1.0-alpha.2"
+APP_VERSION = "3.1.0-alpha.3"
 
 app = FastAPI(
     title="Pine's Journal API",
@@ -42,6 +42,18 @@ async def api_security_headers(request: Request, call_next):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "no-referrer"
     return response
+
+
+@app.get("/api/auth", include_in_schema=False)
+async def access_auth():
+    # Esta rota existe apenas como alvo de navegacao para renovar o Cloudflare
+    # Access. O Access autentica antes de a requisicao chegar ao Worker; com a
+    # sessao valida, retornamos imediatamente para a raiz da PWA.
+    return RedirectResponse(
+        url="/",
+        status_code=303,
+        headers={"Cache-Control": "no-store", "Pragma": "no-cache"},
+    )
 
 
 @app.get("/api/health")
