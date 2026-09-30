@@ -1,4 +1,4 @@
-"""Envio Web Push sem servico externo, usando Web Crypto do runtime Workers.
+﻿"""Envio Web Push sem servico externo, usando Web Crypto do runtime Workers.
 
 Implementa o perfil aes128gcm (RFC 8291/RFC 8188) e autenticacao VAPID
 (RFC 8292). As chaves VAPID ficam em Worker Secrets.
@@ -45,7 +45,7 @@ async def _hmac_sha256(key_bytes: bytes, data: bytes) -> bytes:
         to_js(key_bytes),
         to_js({"name": "HMAC", "hash": "SHA-256"}),
         False,
-        ["sign"],
+        to_js(["sign"]),
     )
     signature = await crypto.subtle.sign("HMAC", key, to_js(data))
     return _buffer_bytes(signature)
@@ -65,7 +65,7 @@ async def _encrypt_payload(payload: bytes, p256dh: str, auth: str) -> bytes:
     server_pair = await crypto.subtle.generateKey(
         to_js({"name": "ECDH", "namedCurve": "P-256"}),
         True,
-        ["deriveBits"],
+        to_js(["deriveBits"]),
     )
     server_public_buffer = await crypto.subtle.exportKey("raw", server_pair.publicKey)
     server_public = _buffer_bytes(server_public_buffer)
@@ -75,7 +75,7 @@ async def _encrypt_payload(payload: bytes, p256dh: str, auth: str) -> bytes:
         to_js(ua_public),
         to_js({"name": "ECDH", "namedCurve": "P-256"}),
         False,
-        [],
+        to_js([]),
     )
     shared_buffer = await crypto.subtle.deriveBits(
         to_js({"name": "ECDH", "public": ua_key}),
@@ -100,7 +100,7 @@ async def _encrypt_payload(payload: bytes, p256dh: str, auth: str) -> bytes:
         to_js(cek),
         "AES-GCM",
         False,
-        ["encrypt"],
+        to_js(["encrypt"]),
     )
     plaintext = payload + b"\x02"
     encrypted_buffer = await crypto.subtle.encrypt(
@@ -148,7 +148,7 @@ async def _vapid_token(endpoint: str, public_key: str, private_key: str, subject
         to_js(jwk),
         to_js({"name": "ECDSA", "namedCurve": "P-256"}),
         False,
-        ["sign"],
+        to_js(["sign"]),
     )
 
     header = {"typ": "JWT", "alg": "ES256"}
@@ -208,3 +208,4 @@ async def send(env, subscription: dict, payload: dict, ttl: int = 86400) -> int:
         ),
     )
     return int(response.status)
+

@@ -21,3 +21,10 @@ imports/
 *.db
 import-v2*.sql
 vapid-secrets*.json
+.venv-workers/
+.venv/
+python_modules/
+.diag-uv/
+.venv-workers/
+python_modules/
+pylock.toml

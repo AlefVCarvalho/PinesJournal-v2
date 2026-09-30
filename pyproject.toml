@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "Pine's Journal - PWA pessoal com Cloudflare Workers, FastAPI e D1"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.116,<1.0",
+    "fastapi==0.140.13",
 ]
 
 [dependency-groups]
@@ -12,3 +12,5 @@ dev = [
     "workers-py",
     "workers-runtime-sdk",
 ]
+
+
